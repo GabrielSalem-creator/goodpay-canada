@@ -44,6 +44,11 @@ describe("feed fairness", () => {
     const old = { ...base, id: "old", created_at: "2026-11-01T00:00:00Z" };
     expect(rankBills([base, old], {}, now)[0]?.id).toBe("old");
   });
+  it("shows bills due soon before bills due later", () => {
+    const soon = { ...base, id: "soon", due_date: "2026-11-24" };
+    const later = { ...base, id: "later", due_date: "2026-12-30" };
+    expect(rankBills([later, soon], {}, now)[0]?.id).toBe("soon");
+  });
   it("hides fully funded bills", () => {
     expect(rankBills([{ ...base, funded: 100 }], {}, now)).toEqual([]);
   });

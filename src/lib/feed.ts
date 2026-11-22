@@ -31,7 +31,7 @@ export function scoreBill(b: FeedInput, prefs: Prefs, now = Date.now()) {
   const cityHit = !prefs.cities?.length || prefs.cities.includes(b.city);
   const catHit = !prefs.categories?.length || prefs.categories.includes(b.category);
   const match = (cityHit ? 0.6 : 0) + (catHit ? 0.4 : 0);
-  const score = 0.3 * fairness + 0.25 * waiting + 0.2 * need + 0.15 * urgency + 0.1 * match;
+  const score = 0.3 * urgency + 0.25 * fairness + 0.2 * waiting + 0.15 * need + 0.1 * match;
   return { score, fairness, waiting, need, urgency, match };
 }
 
@@ -46,8 +46,8 @@ export function rankBills<T extends FeedInput>(bills: T[], prefs: Prefs, now = D
 /** Simple label explaining why a bill is shown. */
 export function whyShown(b: FeedInput, prefs: Prefs, now = Date.now()): string {
   const s = scoreBill(b, prefs, now);
-  if (b.times_helped === 0) return "Never helped before";
   if (s.urgency > 0.6) return "Due soon";
+  if (b.times_helped === 0) return "Never helped";
   if (s.waiting > 0.3) return "Waiting a while";
   if (s.need > 0.5) return "High need";
   return "Matches your picks";

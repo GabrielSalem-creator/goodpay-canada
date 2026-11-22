@@ -7,9 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shell } from "@/components/t4g/shell";
 import { PhotoButton } from "@/components/t4g/photo";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { scanBill } from "@/lib/ai.functions";
-import { ESSENTIALS, isEssential, money, PAYMENT_METHODS } from "@/lib/rules";
+import { ESSENTIALS, isEssential, PAYMENT_METHODS } from "@/lib/rules";
 import { useProfile } from "@/lib/session";
 
 export const Route = createFileRoute("/new")({
@@ -33,7 +32,7 @@ function NewBill() {
   const [ai, setAi] = useState<Record<string, unknown>>({});
   const [f, setF] = useState({
     category: "electricity", provider: "", method: "bill_payment", account: "", institution: "",
-    amount: "", chunk: "20", due: new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10), note: "",
+    amount: "", chunk: "20", due: "", note: "",
   });
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
   useEffect(() => { if (!loading && profile?.role !== "recipient") nav({ to: profile ? "/feed" : "/" }); }, [loading, profile, nav]);
@@ -50,7 +49,7 @@ function NewBill() {
       if (r["account"]) set("account", String(r["account"]));
       if (typeof r["amount"] === "number") set("amount", String(r["amount"]));
       if (typeof r["due_date"] === "string") set("due", r["due_date"]);
-      toast.success("Bill read by AI — check the details");
+      if (typeof r["due_date"] !== "string") toast.error("No due date found — retake the photo"); else toast.success("Bill read");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not read the bill");
     } finally { setBusy(false); }
@@ -59,7 +58,7 @@ function NewBill() {
   const amount = Number(f.amount) || 0;
   const chunk = Number(f.chunk) || amount;
   const method = PAYMENT_METHODS.find((m) => m.id === f.method)!;
-  const ok = f.provider && f.account && amount > 0 && isEssential(f.category);
+  const ok = f.provider && f.account && amount > 0 && isEssential(f.category) && !!f.due;
 
   async function submit() {
     const { error } = await supabase.from("bills").insert({
@@ -75,29 +74,29 @@ function NewBill() {
 
   return (
     <Shell role="recipient" title="Post a bill">
-      <PhotoButton label="Snap your bill — AI fills the form" capture="environment" busy={busy} onPhoto={onPhoto} />
-      <L>What is it?</L>
+      <PhotoButton label="Snap your bill" capture="environment" busy={busy} onPhoto={onPhoto} />
+      <L>Type</L>
       <div className="flex flex-wrap gap-2">
         {ESSENTIALS.map((c) => (
           <button key={c.id} onClick={() => set("category", c.id)} className={`rounded-full px-4 py-2 text-sm font-semibold ${f.category === c.id ? "bg-foreground text-background" : "bg-card"}`}>{c.icon} {c.label}</button>
         ))}
       </div>
-      <L>How is it paid?</L>
+      <L>Paid by</L>
       <div className="grid grid-cols-2 gap-2">
         {PAYMENT_METHODS.map((m) => (
           <button key={m.id} onClick={() => set("method", m.id)} className={`rounded-xl px-3 py-3 text-left text-sm font-semibold ${f.method === m.id ? "bg-foreground text-background" : "bg-card"}`}>{m.label}</button>
         ))}
       </div>
-      <L>Who receives the money</L>
+      <L>To</L>
       <div className="space-y-2">
         <Input placeholder="Biller (e.g. Hydro-Québec)" value={f.provider} onChange={(e) => set("provider", e.target.value)} className="h-12 rounded-xl" />
         <Input placeholder={method.hint} value={f.account} onChange={(e) => set("account", e.target.value)} className="h-12 rounded-xl font-mono" />
         {f.method === "pad" && <Input placeholder="Transit-Institution (e.g. 00011-815)" value={f.institution} onChange={(e) => set("institution", e.target.value)} className="h-12 rounded-xl font-mono" />}
       </div>
-      <L>Amount & split</L>
+      <L>Amount</L>
       <div className="grid grid-cols-2 gap-2">
         <Input inputMode="decimal" placeholder="Total $" value={f.amount} onChange={(e) => set("amount", e.target.value)} className="h-12 rounded-xl font-mono" />
-        <Input type="date" value={f.due} onChange={(e) => set("due", e.target.value)} className="h-12 rounded-xl" />
+        <div className={`flex h-12 items-center justify-center rounded-xl font-mono text-sm ${f.due ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground"}`}>{f.due ? `Due ${f.due} ✓` : "Due: from photo"}</div>
       </div>
       <div className="mt-2 flex gap-2">
         {["10", "20", "50", String(amount || "")].filter(Boolean).map((c, i, arr) => (
@@ -106,10 +105,7 @@ function NewBill() {
           </button>
         ))}
       </div>
-      {amount > 0 && <p className="mt-2 text-xs text-muted-foreground">{Math.ceil(amount / Math.min(chunk, amount))} shares of {money(Math.min(chunk, amount))}</p>}
-      <L>One line for givers (optional)</L>
-      <Textarea maxLength={140} placeholder="No names or personal details." value={f.note} onChange={(e) => set("note", e.target.value)} className="rounded-xl" />
-      <button disabled={!ok} onClick={submit} className="mt-6 w-full rounded-2xl bg-primary py-5 text-lg font-bold text-primary-foreground disabled:opacity-40">Post bill</button>
+      <button disabled={!ok} onClick={submit} className="mt-6 w-full rounded-2xl bg-primary py-5 text-lg font-bold text-primary-foreground disabled:opacity-40">{f.due ? "Post" : "Snap the bill first"}</button>
     </Shell>
   );
 }

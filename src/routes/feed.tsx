@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,7 +7,7 @@ import { Shell } from "@/components/t4g/shell";
 import { BillCard } from "@/components/t4g/bill-card";
 import { GiveSheet } from "@/components/t4g/give-sheet";
 import { loadBillsWithPeople, type LoadedBill } from "@/lib/data";
-import { rankBills, whyShown, type Prefs } from "@/lib/feed";
+import { rankBills, type Prefs } from "@/lib/feed";
 import { useProfile } from "@/lib/session";
 
 export const Route = createFileRoute("/feed")({
@@ -61,20 +61,17 @@ function Feed() {
         </div>
       ) : (
         <>
-          <div className="relative">
-            {deck[1] && <div className="receipt absolute inset-x-4 top-3 bottom-[-12px] opacity-60" />}
+          <div className="relative h-[calc(100dvh-230px)] min-h-[380px]">
+            {deck[1] && <div className="receipt absolute inset-x-4 top-3 bottom-[-12px] opacity-50" />}
             <Swipe key={top.id} onLeft={skip} onRight={help} onUp={save}>
-              <BillCard b={{ ...top, why: whyShown(top, prefs) }} />
+              <BillCard b={top} />
             </Swipe>
           </div>
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <Act onClick={skip} label="Pass" sub="← swipe" />
-            <Act onClick={save} label="Later" sub="↑ swipe" />
-            <Act onClick={help} label="Pay" sub="swipe →" primary />
+          <div className="mt-6 flex items-center justify-center gap-6">
+            <Act onClick={skip} label="✕" />
+            <Act onClick={save} label="★" small />
+            <Act onClick={help} label="$" primary />
           </div>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            {deck.length} bills · least-helped and longest-waiting first · <Link to="/me" className="underline">preferences</Link>
-          </p>
         </>
       )}
       {giving && <GiveSheet bill={giving} payerId={profile.id} onClose={() => setGiving(null)} onDone={() => { setGiving(null); }} />}
@@ -82,10 +79,10 @@ function Feed() {
   );
 }
 
-function Act({ onClick, label, sub, primary }: { onClick: () => void; label: string; sub: string; primary?: boolean }) {
+function Act({ onClick, label, primary, small }: { onClick: () => void; label: string; primary?: boolean; small?: boolean }) {
   return (
-    <button onClick={onClick} className={`rounded-2xl py-4 font-bold active:scale-95 ${primary ? "bg-primary text-primary-foreground" : "bg-card text-foreground shadow-card"}`}>
-      {label}<div className="text-[11px] font-medium opacity-60">{sub}</div>
+    <button onClick={onClick} aria-label={label === "$" ? "Pay" : label === "★" ? "Save" : "Pass"} className={`flex items-center justify-center rounded-full font-bold shadow-card active:scale-90 ${small ? "h-12 w-12 text-lg" : "h-16 w-16 text-2xl"} ${primary ? "bg-primary text-primary-foreground" : "bg-card text-foreground"}`}>
+      {label}
     </button>
   );
 }
@@ -103,7 +100,7 @@ function Swipe({ children, onLeft, onRight, onUp }: { children: React.ReactNode;
   const hint = d.x > 40 ? "PAY" : d.x < -40 ? "PASS" : d.y < -50 ? "LATER" : null;
   return (
     <div
-      className="relative z-10 touch-none animate-pop"
+      className="relative z-10 h-full touch-none animate-pop"
       style={{ transform: `translate(${d.x}px, ${Math.min(0, d.y)}px) rotate(${d.x / 18}deg)`, transition: start.current ? "none" : "transform .25s" }}
       onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY }; e.currentTarget.setPointerCapture(e.pointerId); }}
       onPointerMove={(e) => start.current && setD({ x: e.clientX - start.current.x, y: e.clientY - start.current.y })}
