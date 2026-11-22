@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Transact4Good
+- Demo identity is a profile id in localStorage (src/lib/session.ts), not real auth; tables use open demo RLS — replace with Cloud auth + owner policies before launch.
+- Business rules (income cap, essentials, splits, SIN/card checks) live in src/lib/rules.ts and feed ranking in src/lib/feed.ts, both covered by src/lib/rules.test.ts.
+- Money moves only through DB functions `contribute` (into vault, status held) and `decide_payment` (release/refund) so totals stay consistent.
+- AI checks (ID, selfie, income, bill reading, vault review) are server functions in src/lib/ai.functions.ts.
